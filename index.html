@@ -2135,28 +2135,28 @@ function buildCartShareURL() {
   return `${base}?cart=${encodeURIComponent(payload)}`;
 }
 
-async function shareCart() {
-  if (!cart.length) {
-    const btn = document.getElementById('shareCartBtn');
-    if (typeof showEmptyCartFeedback === 'function') showEmptyCartFeedback(btn);
-    return;
-  }
-  const url = buildCartShareURL();
-  try {
-    if (navigator.share) {
-      await navigator.share({ title: document.title, text: 'Мой заказ в Noir', url });
-    } else {
-      await navigator.clipboard.writeText(url);
-      alert('Ссылка на корзину скопирована!');
-    }
-  } catch {
-    // если пользователь отменил share — просто скопируем
-    try {
-      await navigator.clipboard.writeText(url);
-      alert('Ссылка на корзину скопирована!');
-    } catch (_) {}
-  }
+function isMobileUA() {
+  return /Android|iPhone|iPad|iPod|Windows Phone|Mobi/i.test(navigator.userAgent);
 }
+
+async function shareCart() {
+  if (!cart.length) { showEmptyCartFeedback(document.getElementById('cartModalShare')); return; }
+
+  const url = buildShareUrl();
+  const btn = document.getElementById('cartModalShare') || document.getElementById('shareCartBtn');
+
+  // Мобилки → нативный share; ПК → сразу копируем
+  if (isMobileUA() && navigator.share) {
+    try {
+      await navigator.share({ title: 'Noir — мой заказ', text: 'Собрал корзину, посмотри:', url });
+      return;
+    } catch (_) {
+      // пользователь отменил — просто упадём в копирование
+    }
+  }
+  await fallbackCopy(url, btn);
+}
+
 
 // кнопка «Поделиться»
 const shareBtn = document.getElementById('shareCartBtn');
@@ -2182,6 +2182,20 @@ if (shareBtn) shareBtn.addEventListener('click', shareCart);
     }
   } catch(_) {}
 })();
+(function hydrateCartFromUrl(){
+  const p = new URLSearchParams(location.search).get('cart');
+  if (!p) return;
+  try {
+    const arr = JSON.parse(decodeURIComponent(escape(atob(p))));
+    arr.forEach(([id, qty]) => {
+      if (menuMap.has(id)) for (let i = 0; i < qty; i++) addToCart(id);
+    });
+    history.replaceState({}, '', location.pathname); // убираем ?cart из адреса
+    // сразу показываем корзину
+    setTimeout(openCartModal, 0);
+  } catch {}
+})();
+
   </script>
 </body> 
 </html>
