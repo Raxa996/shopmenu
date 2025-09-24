@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 
 <head>
@@ -2070,14 +2070,6 @@ function checkout() {
   const url = `https://wa.me/${managerPhone}?text=${encodeURIComponent(text)}`;
   window.open(url, "_blank");
 }
- // --- Слушатели модалки блюда ---
-if (modalAddButton) {
- 
-    if (currentModalItemId) {
-      addToCart(currentModalItemId);
-      closeModal();
-    }
-  }
 
 if (modalClose) modalClose.addEventListener("click", closeModal);
 if (modalOverlay) {
@@ -2122,15 +2114,13 @@ renderCategoryBar();          // рисуем чипы категорий
 renderMenu(currentCategory);  // рисуем карточки
 renderCart();                 // синхронизируем количества, суммы и мини-корзину
 // ====== SHARE CART ======
+// ====== SHARE CART (fixed) ======
 function buildCartShareURL() {
-  // кодируем только id и количество — ASCII-safe для btoa
+  // кодируем id и количество
   const data = { items: cart.map(e => ({ id: e.id, q: e.quantity })) };
-
-  // поддержим и file://, и http(s)://
   const base = (location.origin && location.origin !== 'null')
     ? `${location.origin}${location.pathname}`
     : location.href.split('?')[0];
-
   const payload = btoa(JSON.stringify(data));
   return `${base}?cart=${encodeURIComponent(payload)}`;
 }
@@ -2139,30 +2129,49 @@ function isMobileUA() {
   return /Android|iPhone|iPad|iPod|Windows Phone|Mobi/i.test(navigator.userAgent);
 }
 
-async function shareCart() {
-  if (!cart.length) { showEmptyCartFeedback(document.getElementById('cartModalShare')); return; }
+async function fallbackCopy(text, btn) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly','');
+    ta.style.position='fixed';
+    ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+  }
+  if (btn) {
+    const prev = btn.textContent;
+    btn.textContent = ok ? 'Ссылка скопирована' : 'Скопируйте ссылку';
+    btn.disabled = true;
+    setTimeout(()=>{ btn.textContent = prev; btn.disabled = false; }, 1800);
+  } else {
+    alert(ok ? 'Ссылка на корзину скопирована' : ('Скопируйте ссылку: ' + text));
+  }
+}
 
-  const url = buildShareUrl();
-  const btn = document.getElementById('cartModalShare') || document.getElementById('shareCartBtn');
+async function shareCart(e) {
+  e?.preventDefault?.();
+  if (!cart.length) { showEmptyCartFeedback(document.getElementById('shareCartBtn')); return; }
 
-  // Мобилки → нативный share; ПК → сразу копируем
+  const url = buildCartShareURL(); // ← правильное имя!
+  const btn = document.getElementById('shareCartBtn');
+
   if (isMobileUA() && navigator.share) {
     try {
       await navigator.share({ title: 'Noir — мой заказ', text: 'Собрал корзину, посмотри:', url });
       return;
-    } catch (_) {
-      // пользователь отменил — просто упадём в копирование
-    }
+    } catch { /* отмена пользователем — пойдём в копирование */ }
   }
   await fallbackCopy(url, btn);
 }
 
+document.getElementById('shareCartBtn')?.addEventListener('click', shareCart);
 
-// кнопка «Поделиться»
-const shareBtn = document.getElementById('shareCartBtn');
-if (shareBtn) shareBtn.addEventListener('click', shareCart);
-
-// ====== RESTORE CART FROM URL ======
+// ====== RESTORE CART FROM URL (единая версия) ======
 (function applySharedCartFromURL(){
   const p = new URLSearchParams(location.search).get('cart');
   if (!p) return;
@@ -2172,30 +2181,14 @@ if (shareBtn) shareBtn.addEventListener('click', shareCart);
       cart.length = 0;
       data.items.forEach(({ id, q }) => {
         const item = menuMap.get(id);
-        if (item && q > 0) {
-          cart.push({ id, name: item.name, price: item.price, image: item.image, quantity: q });
-        }
+        if (item && q > 0) cart.push({ id, name: item.name, price: item.price, image: item.image, quantity: q });
       });
       renderCart();
-      // опционально: очистим query в адресной строке после применения
       if (history.replaceState) history.replaceState(null, '', location.pathname);
+      setTimeout(openCartModal, 0); // сразу показать корзину после восстановления
     }
-  } catch(_) {}
-})();
-(function hydrateCartFromUrl(){
-  const p = new URLSearchParams(location.search).get('cart');
-  if (!p) return;
-  try {
-    const arr = JSON.parse(decodeURIComponent(escape(atob(p))));
-    arr.forEach(([id, qty]) => {
-      if (menuMap.has(id)) for (let i = 0; i < qty; i++) addToCart(id);
-    });
-    history.replaceState({}, '', location.pathname); // убираем ?cart из адреса
-    // сразу показываем корзину
-    setTimeout(openCartModal, 0);
   } catch {}
 })();
-
-  </script>
+ </script>
 </body> 
 </html>
