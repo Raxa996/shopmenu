@@ -9,6 +9,24 @@
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@300;400;500;600&display=swap"
     rel="stylesheet">
   <style>
+    .scroll-top{
+  position:fixed; right:24px; bottom:92px; z-index:70;
+  width:44px; height:44px; border-radius:999px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; cursor:pointer;
+  background:
+    radial-gradient(60% 100% at 30% 0%, rgba(255,255,255,.7), rgba(255,255,255,.06) 60%),
+    linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.36);
+  box-shadow: inset 0 .5px 0 rgba(255,255,255,.6), 0 10px 24px rgba(0,0,0,.35);
+  backdrop-filter: blur(8px);
+  opacity:0; pointer-events:none; transform:translateY(10px);
+  transition:opacity .25s ease, transform .25s ease;
+}
+.scroll-top.show{ opacity:1; pointer-events:auto; transform:none; }
+.scroll-top svg{ width:20px; height:20px; }
+@media (max-width:600px){ .scroll-top{ right:16px; bottom:80px; } }
+
     /* ── Badges (лейблы) ─────────────────────────────── */
     .badges {
       position: absolute;
@@ -2189,6 +2207,30 @@ document.getElementById('shareCartBtn')?.addEventListener('click', shareCart);
     }
   } catch {}
 })();
+// === Scroll-to-top (стрелка наверх) ===
+window.addEventListener('DOMContentLoaded', () => {
+  const toTopBtn = document.getElementById('toTop');
+  if (!toTopBtn) return;
+
+  const toggleToTop = () => {
+    // Порог появления (можешь поставить 200–600 по вкусу)
+    toTopBtn.classList.toggle('show', window.scrollY > 400);
+  };
+
+  window.addEventListener('scroll', toggleToTop, { passive: true });
+  toggleToTop(); // сразу проставим состояние
+
+  toTopBtn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
  </script>
+ <button id="toTop" class="scroll-top" aria-label="Наверх" title="Наверх">
+  <!-- стрелка ↑ -->
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 5l7 7-1.4 1.4L13 9.8V20h-2V9.8L6.4 13.4 5 12z"/>
+  </svg>
+</button>
 </body> 
 </html>
