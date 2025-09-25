@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 
 <head>
@@ -2683,37 +2683,9 @@ function flash(card, type){
   });
 }
 // --- ИНИЦИАЛИЗАЦИЯ (п.3) ---
-// === АВТОФОТО ДЛЯ БЛЮД (простой вариант без API-ключей) ===
-function catTag(cat){
-  switch (cat){
-    case 'Морепродукты': return 'seafood';
-    case 'Супы':         return 'soup';
-    case 'Салаты':       return 'salad';
-    case 'Десерты':      return 'dessert';
-    case 'Закуски':      return 'appetizer';
-    case 'Суши & Сашими':return 'sushi,sashimi';
-    case 'Напитки':      return 'cocktail,drink';
-    default:             return 'fine dining';
-  }
-}
-function buildUnsplashSourceURL(item){
-  // Рандомная картинка по запросу (без ключа)
-  const q = [item.name, catTag(item.category), 'gourmet', 'restaurant', 'plating']
-            .filter(Boolean).join(',');
-  return `https://source.unsplash.com/900x600/?${encodeURIComponent(q)}`;
-}
-// Если у блюда нет картинки или стоит "auto" — подставляем автоматом
-menuItems.forEach(item => {
-  if (!item.image || item.image === 'auto'){
-    item.image = buildUnsplashSourceURL(item);
-  }
-});
-
-// После подстановки — обычная отрисовка
 renderCategoryBar();
 renderMenu(currentCategory);
 renderCart();
-
 // свайп и оформление только на тач-экранах
   const isMobileForBody = window.matchMedia('(max-width:600px)').matches;
 if (!isMobileForBody){
@@ -2827,15 +2799,6 @@ window.addEventListener('DOMContentLoaded', () => {
     // window.scrollTo({ top: Math.max(0, catY - 8), behavior: 'smooth' });
   });
 });
-// Принудительно обновить все фото (вариант 1)
-function forceRefreshPhotosBasic(){
-  menuItems.forEach(item => {
-    // заново собираем URL и добавляем анти-кэш метку времени
-    item.image = buildUnsplashSourceURL(item) + '&t=' + Date.now();
-  });
-  renderMenu(currentCategory);
-  renderCart();
-}
 
  </script>
  <button id="toTop" class="scroll-top" aria-label="Наверх" title="Наверх">
