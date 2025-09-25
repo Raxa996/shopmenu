@@ -2059,6 +2059,8 @@ if (modalAddButton) {
    // === Состояние корзины и модалки ===
 const cart = [];
 let currentModalItemId = null;
+let swipeInProgress = false; // ← нужен глобально
+
 
 function syncCardQuantities() {
   document.querySelectorAll(".card-qty-count").forEach(span => {
@@ -2126,6 +2128,75 @@ function renderCart() {
       `).join("")
       : '<p class="cart-empty">Добавьте блюда, чтобы сформировать персональный заказ.</p>';
   }
+  function initCardSwipe(){
+  document.querySelectorAll('.menu-card .swipe-row').forEach(row=>{
+    if (row._bound) return; row._bound = true;
+
+    const card = row.closest('.menu-card');
+    const id   = card.dataset.id;
+    const bg   = card.querySelector('.card-swipe-bg');
+
+    let startX=0, dx=0, active=false, moved=false;
+
+    const MAX=120;
+    const THRESH = ()=> Math.min(96, card.clientWidth*0.28);
+    const setX = x => { dx=x; row.style.transform=`translateX(${dx}px)`; };
+
+    row.addEventListener('pointerdown', e=>{
+      if (e.pointerType==='mouse' && e.button!==0) return;
+      active=true; moved=false; swipeInProgress=true;
+      startX=e.clientX; row.classList.add('dragging'); bg.classList.add('show');
+      row.setPointerCapture?.(e.pointerId);
+    }, {passive:true});
+
+    row.addEventListener('pointermove', e=>{
+      if (!active) return;
+      const delta=e.clientX-startX;
+      if (Math.abs(delta)>3) moved=true;
+      const limited = Math.max(-MAX, Math.min(delta, MAX));
+      setX(limited);
+      if (e.cancelable) e.preventDefault();
+    }, {passive:false});
+
+    const end = ()=>{
+      if (!active) return;
+      row.classList.remove('dragging'); bg.classList.remove('show');
+
+      const ok = Math.abs(dx) >= THRESH();
+      const sign = Math.sign(dx);
+
+      setX(0);
+      active=false; swipeInProgress=false;
+
+      if (!ok) return;
+
+      if (sign>0){
+        addToCart(id); haptic(); flash(card,'ok');         // вправо — плюс
+      } else {
+        const exists = cart.find(x=>x.id===id);
+        if (exists) adjustCart(id, -1);                    // влево — минус
+        haptic(); flash(card,'ko');
+      }
+    };
+
+    row.addEventListener('pointerup', end, {passive:true});
+    row.addEventListener('pointercancel', end, {passive:true});
+
+    // если был явный свайп — не открываем модалку кликом
+    row.addEventListener('click', e=>{ if (moved) e.stopPropagation(); }, true);
+  });
+}
+
+function haptic(){ try{ navigator.vibrate?.(10); }catch{} }
+
+function flash(card,type){
+  const color = type==='ok' ? 'rgba(78,209,185,.35)' : 'rgba(243,86,86,.35)';
+  card.animate(
+    [{ boxShadow:'0 0 0 0 rgba(0,0,0,0)' }, { boxShadow:`0 0 0 14px ${color}` }],
+    { duration:220, easing:'ease-out' }
+  );
+}
+
 
   // Суммы/счётчики
   const totalCount = cart.reduce((s, e) => s + e.quantity, 0);
