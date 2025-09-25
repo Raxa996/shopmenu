@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 
 <head>
@@ -2044,6 +2044,7 @@ function renderMenu(filterCat = 'Все') {
   menuGrid.innerHTML = '';
   menuGrid.appendChild(fragment);
   initSwipeToCart();
+  initCardSwipe();
 }
 // Добавить из модалки в корзину
 if (modalAddButton) {
@@ -2252,6 +2253,8 @@ if (cartItemsContainer) cartItemsContainer.addEventListener("click", handleCartC
 
 if (menuGrid) {
   menuGrid.addEventListener("click", (e) => {
+     // если только что был свайп — не открываем модалку
+    if (swipeInProgress) { e.stopPropagation(); return; }
     const btn = e.target.closest(".card-qty-btn");
     if (btn) {
       e.stopPropagation();
@@ -2445,6 +2448,9 @@ function flash(card, type){
 renderCategoryBar();          // рисуем чипы категорий
 renderMenu(currentCategory);  // рисуем карточки
 renderCart();                 // синхронизируем количества, суммы и мини-корзину
+// включаем режим «свайп всей карточки» (прячем старый ползунок на мобиле)
+document.body.classList.add('card-swipe');
+
 // ====== SHARE CART ======
 // ====== SHARE CART (fixed) ======
 function buildCartShareURL() {
