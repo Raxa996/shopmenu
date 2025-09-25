@@ -492,6 +492,7 @@
     }
 
     .menu-grid {
+      
       display: grid;
       gap: 24px;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1318,6 +1319,11 @@ body.card-swipe .swipe-to-cart{ display:none !important; } /* прячем ст�
 }
 .card-swipe-bg.show{ opacity:1; }
 .card-swipe-bg .ok,.card-swipe-bg .ko{
+  /* Десктоп: не показывать слой с иконками свайпа */
+@media (hover: hover) and (pointer: fine){
+  .card-swipe-bg{ display:none !important; }
+}
+
   display:flex; align-items:center; justify-content:center;
   width:56px; height:56px; border-radius:14px; color:#fff;
   box-shadow:0 10px 22px rgba(0,0,0,.28);
@@ -2044,7 +2050,8 @@ function renderMenu(filterCat = 'Все') {
   menuGrid.innerHTML = '';
   menuGrid.appendChild(fragment);
   initSwipeToCart();
-  initCardSwipe();
+if (window.matchMedia('(pointer: coarse)').matches) initCardSwipe();
+
 }
 // Добавить из модалки в корзину
 if (modalAddButton) {
@@ -2076,7 +2083,7 @@ function initCardSwipe(){
     const setX  = x => { dx=x; row.style.transform=`translateX(${dx}px)`; };
 
     row.addEventListener('pointerdown', e=>{
-      if (e.pointerType==='mouse' && e.button!==0) return;
+      if (e.pointerType==='mouse') return;
       active=true; moved=false; swipeInProgress=true;
       startX=e.clientX; row.classList.add('dragging'); bg.classList.add('show');
       row.setPointerCapture?.(e.pointerId);
@@ -2210,7 +2217,7 @@ function renderCart() {
     const setX = x => { dx=x; row.style.transform=`translateX(${dx}px)`; };
 
     row.addEventListener('pointerdown', e=>{
-      if (e.pointerType==='mouse' && e.button!==0) return;
+      if (e.pointerType==='mouse') return;
       active=true; moved=false; swipeInProgress=true;
       startX=e.clientX; row.classList.add('dragging'); bg.classList.add('show');
       row.setPointerCapture?.(e.pointerId);
@@ -2583,11 +2590,14 @@ function flash(card, type){
   });
 }
 // --- ИНИЦИАЛИЗАЦИЯ (п.3) ---
-renderCategoryBar();          // рисуем чипы категорий
-renderMenu(currentCategory);  // рисуем карточки
-renderCart();                 // синхронизируем количества, суммы и мини-корзину
-// включаем режим «свайп всей карточки» (прячем старый ползунок на мобиле)
-document.body.classList.add('card-swipe');
+renderCategoryBar();
+renderMenu(currentCategory);
+renderCart();
+// свайп и оформление только на тач-экранах
+if (window.matchMedia('(pointer: coarse)').matches){
+  document.body.classList.add('card-swipe');
+}
+
 
 // ====== SHARE CART ======
 // ====== SHARE CART (fixed) ======
