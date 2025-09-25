@@ -1294,6 +1294,17 @@
   background:transparent;color:#fff;font-weight:700;letter-spacing:.08em;cursor:pointer;transition:.2s
 }
 .ghost-button:hover{background:rgba(255,255,255,.08)}
+/* Swipe progress + smooth return */
+.swipe-track{ --p:0; user-select:none; }
+.swipe-track::before{
+  content:""; position:absolute; inset:0; z-index:0;
+  transform:scaleX(var(--p)); transform-origin:left;
+  background:linear-gradient(90deg, rgba(78,209,185,.35), rgba(78,209,185,.12));
+  transition:transform .12s ease;
+}
+.swipe-label{ position:relative; z-index:1; transition:opacity .2s ease, transform .2s ease; }
+.swipe-track.added .swipe-label{ opacity:.8; transform:translateX(4px); }
+.swipe-handle{ will-change: transform; transition: transform .25s ease; touch-action: pan-y; }
 
   </style>
 </head>
@@ -2230,69 +2241,98 @@ if (checkoutButton) {
     if (!cart.length) showEmptyCartFeedback(checkoutButton);
   });
 }
-function initSwipeToCart() {
-  const SWIPE_THRESHOLD = 0.65;
+function initSwipeToCart(){
+  const THRESHOLD = 0.60; // как у Wolt: ~60% до «успеха»
+  const supportsPE = 'PointerEvent' in window;
 
-  document.querySelectorAll('.swipe-to-cart').forEach(el => {
-    const handle = el.querySelector('.swipe-handle');
-    const track  = el.querySelector('.swipe-track');
-    if (!handle || !track || handle._bound) return;
-    handle._bound = true;
+  document.querySelectorAll('.swipe-to-cart').forEach(wrap => {
+    const track  = wrap.querySelector('.swipe-track');
+    const handle = wrap.querySelector('.swipe-handle');
+    if (!track || !handle || track._bound) return;
+    track._bound = true;
 
     // клики по контролу не должны открывать модалку карточки
     const stop = e => { e.preventDefault(); e.stopPropagation(); };
+    track.addEventListener('click', stop);
     handle.addEventListener('click', stop);
-    track .addEventListener('click',  stop);
 
-    // на всякий — явно разрешаем вертикальный скролл
     handle.style.touchAction = 'pan-y';
 
-    let startX = 0, dx = 0, dragging = false, pid = null;
+    let startX = 0, dx = 0, active = false, pid = null;
 
-    const max = () => Math.max(0, track.clientWidth - handle.clientWidth);
-    const setX = x => handle.style.transform = `translateX(${x}px)`;
+    const max   = () => Math.max(0, track.clientWidth - handle.clientWidth);
+    const setX  = x => { dx = Math.max(0, Math.min(x, max())); handle.style.transform = `translateX(${dx}px)`; };
+    const setP  = () => { const m = max(); track.style.setProperty('--p', m ? (dx / m) : 0); };
 
-    const onDown = (e) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      dragging = true;
-      pid = e.pointerId;
-      startX = e.clientX;
-      dx = 0;
+    const onDown = (clientX, e) => {
+      if (e && e.pointerType === 'mouse' && e.button !== 0) return;
+      active = true;
+      startX = clientX;
+      pid = e?.pointerId ?? null;
       handle.style.transition = 'none';
-      handle.setPointerCapture?.(pid); // держим движение даже за пределами ручки
+      track.classList.remove('added');
+      track.style.setProperty('--p', 0);
+      document.body.style.userSelect = 'none';
+      e?.target?.setPointerCapture?.(pid);
     };
 
-    const onMove = (e) => {
-      if (!dragging) return;
-      dx = Math.min(Math.max(0, e.clientX - startX), max());
-      setX(dx);
-      if (e.cancelable && Math.abs(dx) > 6) e.preventDefault();
+    const onMove = (clientX, e) => {
+      if (!active) return;
+      // «мягкая резина» после края — ощущается приятнее
+      const m = max();
+      const raw = clientX - startX;
+      const eased = raw < 0 ? 0 : raw > m ? m + Math.tanh((raw - m) / 20) * 12 : raw;
+      setX(eased);
+      setP();
+      if (e?.cancelable) e.preventDefault();
     };
 
     const onUp = () => {
-      if (!dragging) return;
-      dragging = false;
-      handle.releasePointerCapture?.(pid);
+      if (!active) return;
+      active = false;
+      document.body.style.userSelect = '';
       handle.style.transition = '.25s transform';
 
-      const limit = max();
-      const progress = limit ? dx / limit : 0;
+      const m = max();
+      const progress = m ? dx / m : 0;
 
-      if (progress >= SWIPE_THRESHOLD) {
-        setX(limit);
-        const id = el.dataset.id;
+      if (progress >= THRESHOLD) {
+        setX(m); setP();
+        const id = wrap.dataset.id;
         if (id) addToCart(id);
-        setTimeout(() => setX(0), 400);
+        if (navigator.vibrate) navigator.vibrate(10);
+
+        track.classList.add('added');
+        const lbl = track.querySelector('.swipe-label');
+        const prev = lbl?.textContent || '';
+        if (lbl) lbl.textContent = 'Добавлено';
+
+        // короткая пауза — и плавный откат
+        setTimeout(() => {
+          if (lbl) lbl.textContent = prev;
+          track.classList.remove('added');
+          setX(0); setP();
+        }, 650);
       } else {
-        setX(0);
+        setX(0); setP();
       }
     };
 
-    // Pointer Events — универсально для iOS/Android/десктопа
-    handle.addEventListener('pointerdown',   onDown, { passive: true  });
-    handle.addEventListener('pointermove',   onMove, { passive: false });
-    handle.addEventListener('pointerup',     onUp,   { passive: true  });
-    handle.addEventListener('pointercancel', onUp,   { passive: true  });
+    // Pointer Events (современные браузеры/iOS 13+)
+    if (supportsPE) {
+      track.addEventListener('pointerdown', e => onDown(e.clientX, e), { passive:true });
+      track.addEventListener('pointermove', e => onMove(e.clientX, e), { passive:false });
+      track.addEventListener('pointerup',   onUp, { passive:true });
+      track.addEventListener('pointercancel', onUp, { passive:true });
+    } else {
+      // Фоллбэк для старых WebKit
+      track.addEventListener('touchstart', e => onDown(e.touches[0].clientX, e), { passive:true });
+      track.addEventListener('touchmove',  e => onMove(e.touches[0].clientX, e), { passive:false });
+      track.addEventListener('touchend',   onUp, { passive:true });
+      track.addEventListener('mousedown',  e => onDown(e.clientX, e));
+      window.addEventListener('mousemove', e => onMove(e.clientX, e));
+      window.addEventListener('mouseup',   onUp);
+    }
   });
 }
 // --- ИНИЦИАЛИЗАЦИЯ (п.3) ---
