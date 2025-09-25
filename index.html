@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 
 <head>
@@ -1318,16 +1318,20 @@ body.card-swipe .swipe-to-cart{ display:none !important; } /* прячем ст�
   opacity:0; transition:opacity .18s ease;
 }
 .card-swipe-bg.show{ opacity:1; }
-.card-swipe-bg .ok,.card-swipe-bg .ko{
-  /* Десктоп: не показывать слой с иконками свайпа */
-@media (hover: hover) and (pointer: fine){
-  .card-swipe-bg{ display:none !important; }
-}
-
+.card-swipe-bg .ok,
+.card-swipe-bg .ko{
   display:flex; align-items:center; justify-content:center;
   width:56px; height:56px; border-radius:14px; color:#fff;
   box-shadow:0 10px 22px rgba(0,0,0,.28);
 }
+.card-swipe-bg .ok{ background:linear-gradient(120deg,var(--success),#3cbfa7); }
+.card-swipe-bg .ko{ background:linear-gradient(120deg,#ff6a6a,#c13232); }
+
+/* Десктоп: вовсе скрываем слой подсказок свайпа */
+@media (hover:hover) and (pointer:fine){
+  .card-swipe-bg{ display:none !important; }
+}
+
 .card-swipe-bg .ok{ background:linear-gradient(120deg,var(--success),#3cbfa7); }
 .card-swipe-bg .ko{ background:linear-gradient(120deg,#ff6a6a,#c13232); }
 
@@ -1354,6 +1358,53 @@ body.card-swipe .swipe-to-cart{ display:none !important; } /* прячем ст�
 .menu-card .card-content{ display:flex; flex-direction:column; flex:1; }
 .menu-card .card-footer{ margin-top:auto; }
 
+/* Мобилка: никаких ползунков и фоновых галочек/крестиков */
+@media (max-width:600px){
+  .mobile-only{ display:none !important; }         /* скрыть свайп-ползунок */
+  .menu-card .card-swipe-bg{ display:none !important; } /* на всякий — скрыть фон свайпа */
+}
+/* === ОТКЛЮЧАЕМ СВАЙПЫ И +/- НА МОБИЛЕ === */
+
+/* полностью убираем все следы свайпов */
+.card-swipe-bg,
+.swipe-to-cart { display: none !important; }
+
+/* если где-то осталась обёртка — нейтрализуем */
+.swipe-row { transform: none !important; transition: none !important; }
+
+/* +/− показываем только на десктопе */
+.desktop-only { display: inline-flex; }
+@media (max-width:600px){
+  .desktop-only { display: none !important; } /* на мобиле прячем +/− */
+}
+/* Центрируем футер модалки на мобиле */
+@media (max-width:600px){
+  .modal-footer{
+    flex-direction: column;      /* цена и кнопка вертикально */
+    align-items: center;         /* центр по горизонтали */
+    gap: 12px;
+  }
+  .modal-add{
+    width: min(320px, 100%);     /* широкая кнопка */
+    text-align: center;
+  }
+}
+
+/* Счётчик в модалке (– кол-во +) */
+.modal-qty{
+  display:inline-flex; align-items:center; gap:10px;
+  background: rgba(162,126,244,0.14);
+  border:1px solid rgba(162,126,244,0.25);
+  border-radius:999px; padding:6px 10px;
+}
+.modal-qty-btn{
+  width:36px; height:36px; border-radius:50%;
+  border:none; background:rgba(255,255,255,0.08);
+  color:#fff; font-size:20px; line-height:1; cursor:pointer;
+  transition:background .25s ease, transform .25s ease;
+}
+.modal-qty-btn:hover{ background:var(--accent); transform:translateY(-1px); }
+.modal-qty-count{ min-width:28px; text-align:center; font-weight:600; }
 
   </style>
 </head>
@@ -2018,76 +2069,104 @@ function renderMenu(filterCat = 'Все') {
   const fragment = document.createDocumentFragment();
 
   list.forEach(item => {
-    const card = document.createElement("article");
-    card.className = "menu-card";
+    const card = document.createElement('article');
+    card.className = 'menu-card';
     card.dataset.id = item.id;
-  card.innerHTML = `
-  <div class="card-swipe-bg" aria-hidden="true">
-    <div class="ok" title="Добавить">
-      <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z"/></svg>
-    </div>
-    <div class="ko" title="Убрать">
-      <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
-    </div>
-  </div>
 
-  <div class="swipe-row">
-    <div class="card-image">
-      <img src="${item.image}" alt="${item.name}">
-      <div class="card-gradient"></div>
-    </div>
-
-    <div class="card-content">
-      <div>
-        <h3>${item.name}</h3>
-        <p class="card-description">${item.description}</p>
+    // НИКАКИХ swipe-элементов здесь больше нет
+    card.innerHTML = `
+      <div class="card-image">
+        <img src="${item.image}" alt="${item.name}">
+        <div class="card-gradient"></div>
       </div>
 
-      <div class="card-footer">
-        <span class="card-price">${formatPrice(item.price)}</span>
-
-        <!-- ДЕСКТОП: +/- -->
-        <div class="card-qty-controls desktop-only" data-id="${item.id}">
-          <button type="button" class="card-qty-btn" data-action="decrease" data-id="${item.id}" aria-label="Уменьшить количество">-</button>
-          <span class="card-qty-count" data-id="${item.id}">0</span>
-          <button type="button" class="card-qty-btn" data-action="increase" data-id="${item.id}" aria-label="Увеличить количество">+</button>
+      <div class="card-content">
+        <div>
+          <h3>${item.name}</h3>
+          <p class="card-description">${item.description}</p>
         </div>
 
-        <!-- МОБИЛА: старый ползунок можно скрыть правилами body.card-swipe -->
-        <div class="swipe-to-cart mobile-only" data-id="${item.id}">
-          <div class="swipe-track">
-            <div class="swipe-label">Свайпните, чтобы добавить</div>
-            <div class="swipe-handle" aria-label="Добавить"></div>
+        <div class="card-footer">
+          <span class="card-price">${formatPrice(item.price)}</span>
+
+          <!-- +/− оставляем только для десктопа -->
+          <div class="card-qty-controls desktop-only" data-id="${item.id}">
+            <button type="button" class="card-qty-btn" data-action="decrease" data-id="${item.id}" aria-label="Уменьшить количество">-</button>
+            <span class="card-qty-count" data-id="${item.id}">0</span>
+            <button type="button" class="card-qty-btn" data-action="increase" data-id="${item.id}" aria-label="Увеличить количество">+</button>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-`;
-
+    `;
     fragment.appendChild(card);
   });
-  // ↓ ЭТО ДОЛЖНО БЫТЬ ВНУТРИ ФУНКЦИИ ( это меню )
+
   menuGrid.innerHTML = '';
   menuGrid.appendChild(fragment);
-  initSwipeToCart();
-if (window.matchMedia('(pointer: coarse)').matches) initCardSwipe();
-
 }
-// Добавить из модалки в корзину
+
+
+  // На мобилке ничего не инициализируем (убираем свайпы)
+  const isMobile = window.matchMedia('(max-width:600px)').matches;
+  if (!isMobile) {
+  
+  
+  }
+ // ← ВАЖНО: эта скобка закрывает renderMenu
+// Добавить из модалки в корзину (без закрытия, переключаемся на счетчик)
 if (modalAddButton) {
   modalAddButton.addEventListener("click", () => {
-    if (currentModalItemId) {
-      addToCart(currentModalItemId); // кладём выбранное блюдо
-          closeModal();                  // закрываем карточку блюда
-        }
-      });
-    }
+    if (!currentModalItemId) return;
+    addToCart(currentModalItemId);
+    renderModalControls();   // покажем –/+ вместо кнопки
+  });
+}
+
     // Закрыть модалку
    // === Состояние корзины и модалки ===
 const cart = [];
 let currentModalItemId = null;
 let swipeInProgress = false; // ← нужен глобально
+/* === MODAL: переключение "Добавить" ↔ счётчик === */
+function renderModalControls() {
+  const footer = document.querySelector('#modalOverlay .modal-footer');
+  if (!footer || !modalAddButton || !currentModalItemId) return;
+
+  let qty = footer.querySelector('.modal-qty');
+  const entry = cart.find(e => e.id === currentModalItemId);
+
+  if (entry) {
+    // Товар уже в корзине — показываем счётчик, прячем кнопку "Добавить"
+    modalAddButton.style.display = 'none';
+
+    if (!qty) {
+      qty = document.createElement('div');
+      qty.className = 'modal-qty';
+      qty.innerHTML = `
+        <button class="modal-qty-btn" data-action="decrease" type="button">-</button>
+        <span class="modal-qty-count">0</span>
+        <button class="modal-qty-btn" data-action="increase" type="button">+</button>
+      `;
+      footer.appendChild(qty);
+
+      // обработчики –/+
+      qty.addEventListener('click', (e) => {
+        const btn = e.target.closest('.modal-qty-btn');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        if (action === 'increase') adjustCart(currentModalItemId, 1);
+        if (action === 'decrease') adjustCart(currentModalItemId, -1);
+        renderModalControls(); // обновляем цифру
+      });
+    }
+
+    qty.querySelector('.modal-qty-count').textContent = entry.quantity;
+  } else {
+    // Товара нет в корзине — убираем счётчик, показываем "Добавить"
+    if (qty) qty.remove();
+    modalAddButton.style.display = '';
+  }
+}
 
 function initCardSwipe(){
   document.querySelectorAll('.menu-card .swipe-row').forEach(row=>{
@@ -2140,9 +2219,7 @@ function initCardSwipe(){
       }
     };
 
-    row.addEventListener('pointerup', end, {passive:true});
-    row.addEventListener('pointercancel', end, {passive:true});
-    row.addEventListener('click', e=>{ if (moved) e.stopPropagation(); }, true);
+  
   });
 }
 
@@ -2170,6 +2247,8 @@ function openModal(itemId){
   if (!item) return;
 
   currentModalItemId = itemId;
+  renderModalControls();
+
 
   if (modalBadges) modalBadges.innerHTML = renderBadges(item.badges || []);
 
@@ -2202,84 +2281,77 @@ function addToCart(itemId) {
 }
 
 function renderCart() {
-  // Боковая корзина
+  // 1) Боковая панель (если она есть)
   if (cartItemsContainer) {
     cartItemsContainer.innerHTML = cart.length
-      ? cart.map(entry => `
-        <div class="cart-item">
-          <div class="cart-item-info">
-            <img src="${entry.image}" alt="${entry.name}">
-            <div>
-              <p class="cart-item-name">${entry.name}</p>
-              <span class="cart-item-price">${formatPrice(entry.price)}</span>
+      ? cart.map(e => `
+          <div class="cart-item">
+            <div class="cart-item-info">
+              <img src="${e.image}" alt="${e.name}">
+              <div>
+                <p class="cart-item-name">${e.name}</p>
+                <span class="cart-item-price">${formatPrice(e.price)}</span>
+              </div>
+            </div>
+            <div class="cart-controls">
+              <button type="button" data-action="decrease" data-id="${e.id}">-</button>
+              <span class="cart-quantity">${e.quantity}</span>
+              <button type="button" data-action="increase" data-id="${e.id}">+</button>
             </div>
           </div>
-          <div class="cart-controls">
-            <button type="button" data-action="decrease" data-id="${entry.id}">-</button>
-            <span class="cart-quantity">${entry.quantity}</span>
-            <button type="button" data-action="increase" data-id="${entry.id}">+</button>
-          </div>
-        </div>
-      `).join("")
+        `).join('')
       : '<p class="cart-empty">Добавьте блюда, чтобы сформировать персональный заказ.</p>';
   }
-  function initCardSwipe(){
-  document.querySelectorAll('.menu-card .swipe-row').forEach(row=>{
-    if (row._bound) return; row._bound = true;
 
-    const card = row.closest('.menu-card');
-    const id   = card.dataset.id;
-    const bg   = card.querySelector('.card-swipe-bg');
+  // 2) Список в модалке корзины
+  const cartModalListEl = document.getElementById('cartModalList');
+  if (cartModalListEl) {
+    cartModalListEl.innerHTML = cart.length
+      ? cart.map(e => `
+          <div class="cart-item">
+            <div class="cart-item-info">
+              <img src="${e.image}" alt="${e.name}"
+                   style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid rgba(255,255,255,.08)">
+              <div>
+                <p class="cart-item-name" style="margin:0;font-size:14px;font-weight:500">${e.name}</p>
+                <span class="cart-item-price" style="display:block;margin-top:6px;color:var(--text-muted);font-size:12px">
+                  ${formatPrice(e.price)}
+                </span>
+              </div>
+            </div>
+            <div class="cart-controls">
+              <button type="button" data-action="decrease" data-id="${e.id}">-</button>
+              <span class="cart-quantity">${e.quantity}</span>
+              <button type="button" data-action="increase" data-id="${e.id}">+</button>
+            </div>
+          </div>
+        `).join('')
+      : '<p class="cart-empty">Корзина пуста.</p>';
+  }
 
-    let startX=0, dx=0, active=false, moved=false;
+  // 3) Счётчики и суммы
+  const totalCount = cart.reduce((s, e) => s + e.quantity, 0);
+  const totalPrice = cart.reduce((s, e) => s + e.price * e.quantity, 0);
 
-    const MAX=120;
-    const THRESH = ()=> Math.min(96, card.clientWidth*0.28);
-    const setX = x => { dx=x; row.style.transform=`translateX(${dx}px)`; };
+  if (cartCounter) cartCounter.textContent = totalCount;
+  if (cartTotal)   cartTotal.textContent   = formatPrice(totalPrice);
 
-    row.addEventListener('pointerdown', e=>{
-      if (e.pointerType==='mouse') return;
-      active=true; moved=false; swipeInProgress=true;
-      startX=e.clientX; row.classList.add('dragging'); bg.classList.add('show');
-      row.setPointerCapture?.(e.pointerId);
-    }, {passive:true});
+  const cartModalTotalEl = document.getElementById('cartModalTotal');
+  if (cartModalTotalEl) cartModalTotalEl.textContent = formatPrice(totalPrice);
 
-    row.addEventListener('pointermove', e=>{
-      if (!active) return;
-      const delta=e.clientX-startX;
-      if (Math.abs(delta)>3) moved=true;
-      const limited = Math.max(-MAX, Math.min(delta, MAX));
-      setX(limited);
-      if (e.cancelable) e.preventDefault();
-    }, {passive:false});
+  const miniCartCountEl  = document.getElementById('miniCartCount');
+  if (miniCartCountEl)   miniCartCountEl.textContent  = totalCount;
 
-    const end = ()=>{
-      if (!active) return;
-      row.classList.remove('dragging'); bg.classList.remove('show');
+  // 4) Кнопка «Оформить»
+  if (checkoutButton) checkoutButton.disabled = cart.length === 0;
 
-      const ok = Math.abs(dx) >= THRESH();
-      const sign = Math.sign(dx);
-
-      setX(0);
-      active=false; swipeInProgress=false;
-
-      if (!ok) return;
-
-      if (sign>0){
-        addToCart(id); haptic(); flash(card,'ok');         // вправо — плюс
-      } else {
-        const exists = cart.find(x=>x.id===id);
-        if (exists) adjustCart(id, -1);                    // влево — минус
-        haptic(); flash(card,'ko');
-      }
-    };
-
-    row.addEventListener('pointerup', end, {passive:true});
-    row.addEventListener('pointercancel', end, {passive:true});
-
-    // если был явный свайп — не открываем модалку кликом
-    row.addEventListener('click', e=>{ if (moved) e.stopPropagation(); }, true);
-  });
+  // 5) Синхронизируем цифры на карточках + контролы в модалке товара
+  syncCardQuantities();
+  const isModalOpen = modalOverlay && !modalOverlay.classList.contains('hidden');
+  if (isModalOpen && currentModalItemId) {
+    // эта функция из шага 2.2 — переключает кнопку «Добавить» ↔ счетчик –/+
+    renderModalControls();
+  }
 }
 
 function haptic(){ try{ navigator.vibrate?.(10); }catch{} }
@@ -2334,7 +2406,7 @@ function flash(card,type){
 
   // Синхронизация количества на карточках
   syncCardQuantities();
-}
+
 
 function adjustCart(itemId, delta) {
   const entry = cart.find(e => e.id === itemId);
@@ -2615,8 +2687,10 @@ renderCategoryBar();
 renderMenu(currentCategory);
 renderCart();
 // свайп и оформление только на тач-экранах
-if (window.matchMedia('(pointer: coarse)').matches){
-  document.body.classList.add('card-swipe');
+  const isMobileForBody = window.matchMedia('(max-width:600px)').matches;
+if (!isMobileForBody){
+} else {
+  document.body.classList.remove('card-swipe');
 }
 
 
