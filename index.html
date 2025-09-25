@@ -1405,6 +1405,37 @@ body.card-swipe .swipe-to-cart{ display:none !important; } /* прячем ст�
 }
 .modal-qty-btn:hover{ background:var(--accent); transform:translateY(-1px); }
 .modal-qty-count{ min-width:28px; text-align:center; font-weight:600; }
+/* Кнопка быстрого добавления на мобиле */
+/* Плюс рядом с ценой (правый нижний угол карточки) */
+.card-add-mobile{
+  margin-left: auto;           /* прижимаем кнопку к правому краю футера */
+  width:30px; height:30px; flex-shrink:0;
+  border-radius:999px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; cursor:pointer;
+  background:
+    radial-gradient(60% 100% at 30% 0%, rgba(255,255,255,.7), rgba(255,255,255,.06) 60%),
+    linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.36);
+  box-shadow: inset 0 .5px 0 rgba(255,255,255,.6), 0 10px 24px rgba(0,0,0,.35);
+  backdrop-filter: blur(8px);
+  transition: transform .15s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.card-add-mobile:hover{ transform: translateY(-1px); }
+.card-add-mobile:active{ transform: scale(.96); }
+.card-add-mobile svg{ width:20px; height:20px; }
+
+/* показываем кнопку только на мобиле; на десктопе есть блок +/- */
+@media (min-width:601px){
+  .card-add-mobile{ display:none; }
+}
+
+/* чтобы градиент над фото не блокировал клики по кнопке */
+.card-image .card-gradient{ pointer-events:none; }
+
+/* лёгкий бамп мини-корзины при добавлении */
+@keyframes cart-bump { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
+.mini-cart.bump{ animation: cart-bump .35s ease; }
 
   </style>
 </head>
@@ -2076,9 +2107,11 @@ function renderMenu(filterCat = 'Все') {
     // НИКАКИХ swipe-элементов здесь больше нет
     card.innerHTML = `
       <div class="card-image">
-        <img src="${item.image}" alt="${item.name}">
-        <div class="card-gradient"></div>
-      </div>
+  <img src="${item.image}" alt="${item.name}">
+
+  <div class="card-gradient"></div>
+</div>
+
 
       <div class="card-content">
         <div>
@@ -2086,16 +2119,24 @@ function renderMenu(filterCat = 'Все') {
           <p class="card-description">${item.description}</p>
         </div>
 
-        <div class="card-footer">
-          <span class="card-price">${formatPrice(item.price)}</span>
+       <div class="card-footer">
+  <span class="card-price">${formatPrice(item.price)}</span>
 
-          <!-- +/− оставляем только для десктопа -->
-          <div class="card-qty-controls desktop-only" data-id="${item.id}">
-            <button type="button" class="card-qty-btn" data-action="decrease" data-id="${item.id}" aria-label="Уменьшить количество">-</button>
-            <span class="card-qty-count" data-id="${item.id}">0</span>
-            <button type="button" class="card-qty-btn" data-action="increase" data-id="${item.id}" aria-label="Увеличить количество">+</button>
-          </div>
-        </div>
+  <!-- кнопка быстрого добавления: СПРАВА от цены, только на мобиле -->
+  <button class="card-add-mobile" data-id="${item.id}" aria-label="Добавить в заказ">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M11 11V6h2v5h5v2h-5v5h-2v-5H6v-2h5z"/>
+    </svg>
+  </button>
+
+  <!-- десктопные +/- (как было) -->
+  <div class="card-qty-controls desktop-only" data-id="${item.id}">
+    <button type="button" class="card-qty-btn" data-action="decrease" data-id="${item.id}">-</button>
+    <span class="card-qty-count" data-id="${item.id}">0</span>
+    <button type="button" class="card-qty-btn" data-action="increase" data-id="${item.id}">+</button>
+  </div>
+</div>
+
       </div>
     `;
     fragment.appendChild(card);
@@ -2487,12 +2528,27 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Клики по спискам: +/- и открытие карточки ---
-if (cartItemsContainer) cartItemsContainer.addEventListener("click", handleCartClick);
-
 if (menuGrid) {
   menuGrid.addEventListener("click", (e) => {
-     // если только что был свайп — не открываем модалку
-    if (swipeInProgress) { e.stopPropagation(); return; }
+    // если только что был свайп — не открываем модалку
+    if (typeof swipeInProgress !== "undefined" && swipeInProgress) {
+      e.stopPropagation();
+      return;
+    }
+
+    // 1) Мобильный “+” в правом верхнем углу карточки
+    const mobAdd = e.target.closest(".card-add-mobile");
+    if (mobAdd) {
+      e.stopPropagation();
+      const id = mobAdd.dataset.id;
+      addToCart(id);
+      try { haptic(); } catch {}
+      try { flash(mobAdd.closest(".menu-card"), "ok"); } catch {}
+      bumpMiniCart(); // небольшая анимация кнопки "Сделать заказ"
+      return;
+    }
+
+    // 2) Десктопные кнопки +/- в футере карточки
     const btn = e.target.closest(".card-qty-btn");
     if (btn) {
       e.stopPropagation();
@@ -2501,12 +2557,27 @@ if (menuGrid) {
       if (action === "decrease") adjustCart(id, -1);
       return;
     }
-    if (e.target.closest(".swipe-to-cart")) { e.stopPropagation(); return; }
 
+    // 3) Старый свайп-контрол (если где-то остался)
+    if (e.target.closest(".swipe-to-cart")) { 
+      e.stopPropagation(); 
+      return; 
+    }
+
+    // 4) Открытие модалки по клику в карточку
     const card = e.target.closest(".menu-card");
     if (card) openModal(card.dataset.id);
   });
 }
+function bumpMiniCart(){
+  const btn = document.getElementById('miniCartBtn');
+  if (!btn) return;
+  btn.classList.remove('bump');  // перезапуск анимации
+  void btn.offsetWidth;
+  btn.classList.add('bump');
+  setTimeout(() => btn.classList.remove('bump'), 400);
+}
+
 
 
 // --- Кнопка «Оформить заказ» в боковой панели ---
