@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 
 <head>
@@ -492,7 +492,12 @@
     }
 
     .menu-grid {
-      
+      .menu-grid{
+  /* твои существующие свойства оставить */
+  align-items: stretch;       /* тянем элементы по высоте трека */
+  grid-auto-rows: 1fr;        /* все строки одинаковой высоты */
+}
+
       display: grid;
       gap: 24px;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
